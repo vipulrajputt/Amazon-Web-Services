@@ -1,0 +1,44 @@
+DROP TABLE src_table_db;
+DROP TABLE s3_export;
+
+
+
+SET dynamodb.throughput.write.percent = 10;
+SET dynamodb.throughput.read.percent = 20;
+
+!echo "Read Write Capacity Percentages set.";
+!echo "USING DOMAIN: ${hiveconf:domain} REGION: ${hiveconf:region} ";
+!echo;
+
+
+CREATE EXTERNAL TABLE src_table_db (column1 datatype, column2 datatype, column3 datatype, column4 datatype, column5 datatype)
+STORED BY 'org.apache.hadoop.hive.dynamodb.DynamoDBStorageHandler'
+TBLPROPERTIES ("dynamodb.table.name" = "<table-name>",
+               "dynamodb.column.mapping" = "column1:column1,column2:column2,column3:column3,column4:column4,column5:column5");
+
+!echo "CREATED SOURCE TABLE.";
+!echo;
+
+
+CREATE EXTERNAL TABLE s3_export(column1 datatype, column2 datatype, column3 datatype, column4 datatype)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' 
+LOCATION 's3://path/folder';
+
+
+!echo "CREATED DESTINATION TABLE. Describing all tables.. ";
+!echo;
+
+DESCRIBE src_table_db;
+!echo;
+
+!echo "Starting the copy ... ";
+!echo;
+                    
+INSERT OVERWRITE TABLE s3_export
+SELECT empid, created_date
+FROM src_table_db
+WHERE (unix_timestamp(created_date,'dd/MM/yy') > unix_timestamp('2019-01-01', 'yyyy-MM-dd'))&&(unix_timestamp(created_date,'dd/MM/yy') < unix_timestamp('2019-02-01', 'yyyy-MM-dd'));
+
+
+!echo "INSERT COMPLETE.";
+!echo "Backfill complete.";
